@@ -121,7 +121,12 @@ const sectionObserver = new IntersectionObserver(
 
 sections.forEach(s => sectionObserver.observe(s));
 
-/* ─── Contact form ──────────────────────────────────── */
+/* ─── Contact form — Formspree integration ──────────── */
+// 1. Regístrate en https://formspree.io con matiasworkspace97@gmail.com
+// 2. Crea un nuevo formulario → copia el ID (ej: "xpzgkwvb")
+// 3. Pégalo aquí:
+const FORMSPREE_ID = 'YOUR_FORM_ID'; // ← reemplaza esto con tu ID de Formspree
+
 const contactForm  = qs('#contactForm');
 const submitBtn    = qs('#submitBtn');
 const formFeedback = qs('#formFeedback');
@@ -134,34 +139,42 @@ contactForm?.addEventListener('submit', async (e) => {
     return;
   }
 
-  // Gather data
   const data = {
     name:    contactForm.name.value.trim(),
     email:   contactForm.email.value.trim(),
     message: contactForm.message.value.trim(),
   };
 
-  // Disable button while "sending"
   submitBtn.disabled = true;
   submitBtn.querySelector('.btn-text').textContent = 'Enviando…';
   setFeedback('', '');
 
-  try {
-    // ── REPLACE this block with your real backend / Formspree endpoint ──
-    // Example with Formspree:
-    // const res = await fetch('https://formspree.io/f/YOUR_ID', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    //   body: JSON.stringify(data),
-    // });
-    // if (!res.ok) throw new Error('Server error');
+  // Si el ID todavía no está configurado, abre el correo directamente
+  if (FORMSPREE_ID === 'YOUR_FORM_ID') {
+    const subject = encodeURIComponent(`Mensaje de ${data.name} — Portfolio`);
+    const body    = encodeURIComponent(`Nombre: ${data.name}\nEmail: ${data.email}\n\n${data.message}`);
+    window.location.href = `mailto:matiasworkspace97@gmail.com?subject=${subject}&body=${body}`;
+    submitBtn.disabled = false;
+    submitBtn.querySelector('.btn-text').textContent = 'Enviar mensaje';
+    return;
+  }
 
-    // Simulated delay for demo purposes
-    await new Promise(r => setTimeout(r, 1400));
+  try {
+    const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body:    JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json?.error || 'Server error');
+    }
 
     setFeedback('✓ Mensaje enviado. ¡Te responderé pronto!', 'success');
     contactForm.reset();
-  } catch {
+  } catch (err) {
+    console.error('Form error:', err);
     setFeedback('✗ Algo salió mal. Por favor inténtalo de nuevo.', 'error');
   } finally {
     submitBtn.disabled = false;
